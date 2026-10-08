@@ -13,7 +13,8 @@ def transpose(A: dace.float64[M, N] @ dace.dtypes.StorageType.GPU_Global,
               B: dace.float64[N, M] @ dace.dtypes.StorageType.GPU_Global):
     for i, j in dace.map[0:M:16, 0:N:16] @ dace.dtypes.ScheduleType.GPU_Device:
         for bi, bj in dace.map[i:i + 16, j:j + 16] @ dace.dtypes.ScheduleType.GPU_ThreadBlock:
-            B[bj, bi] = A[bi, bj]
+            if bj < N and bi < M:
+                B[bj, bi] = A[bi, bj]
 
 
 sdfg = transpose.to_sdfg()
@@ -37,8 +38,8 @@ print("Saved expanded sdfg to " + filename)
 
 csdfg = sdfg.compile()
 
-A = cp.arange(60, dtype=dace.float64.as_numpy_dtype()).reshape((10, 6))
-B = cp.empty((6, 10), dtype=A.dtype)
+A = cp.arange(100, dtype=dace.float64.as_numpy_dtype()).reshape((20, 5))
+B = cp.empty((5, 20), dtype=A.dtype)
 csdfg(A=A, B=B, M=A.shape[0], N=A.shape[1])
 
 print(cp.asnumpy(A))
