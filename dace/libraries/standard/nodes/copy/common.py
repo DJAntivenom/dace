@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 INPUT_CONNECTOR_NAME = "_cpy_in"
 OUTPUT_CONNECTOR_NAME = "_cpy_out"
 
+MEMORY_DESCRIPTOR_CONNECTOR_NAME = "_dsc_in"
+
 
 @dataclass
 class CopyExpansion:
@@ -90,7 +92,7 @@ def _delinearized_index(b_i: symbolic.symbol, shape: List[symbolic.SymExpr], lay
 
 
 def cuda2d_pitch_params(
-    copy_shape: List[symbolic.SymExpr], src_strides: List[symbolic.SymExpr], dst_strides: List[symbolic.SymExpr]
+        copy_shape: List[symbolic.SymExpr], src_strides: List[symbolic.SymExpr], dst_strides: List[symbolic.SymExpr]
 ) -> Optional[Tuple[symbolic.SymExpr, symbolic.SymExpr, symbolic.SymExpr, symbolic.SymExpr]]:
     """Element-count ``cudaMemcpy2DAsync`` pitch params ``(dpitch, spitch, width, height)`` for a
     2D (or ``(N, 1)``-promoted) copy, or ``None`` if not a single ``cudaMemcpy2DAsync``. Single
@@ -183,8 +185,8 @@ def _make_mapped_tasklet_expansion(node: "CopyLibraryNode",
 
     is_register = lambda s: s == dtypes.StorageType.Register
     is_thread_local = (is_register(inp.storage) and is_register(out.storage)) or (
-        (is_register(inp.storage) and out.storage == dtypes.StorageType.GPU_Shared) or
-        (is_register(out.storage) and inp.storage == dtypes.StorageType.GPU_Shared))
+            (is_register(inp.storage) and out.storage == dtypes.StorageType.GPU_Shared) or
+            (is_register(out.storage) and inp.storage == dtypes.StorageType.GPU_Shared))
     in_kernel = is_devicelevel_gpu(parent_state.sdfg, parent_state, node)
     if is_thread_local or in_kernel:
         schedule = dtypes.ScheduleType.Sequential

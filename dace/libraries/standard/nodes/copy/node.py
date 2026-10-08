@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 from dace import library, nodes, dtypes, properties
 from dace.libraries.standard.helper import (CURRENT_STREAM_NAME, CPU_RESIDENT_STORAGES)
-from dace.libraries.standard.nodes.copy.common import INPUT_CONNECTOR_NAME, OUTPUT_CONNECTOR_NAME
+from dace.libraries.standard.nodes.copy.common import INPUT_CONNECTOR_NAME, OUTPUT_CONNECTOR_NAME, \
+    MEMORY_DESCRIPTOR_CONNECTOR_NAME
 
 if TYPE_CHECKING:
     pass
@@ -29,13 +30,14 @@ class CopyLibraryNode(nodes.LibraryNode):
     implementations = {}
     default_implementation = 'Auto'
 
-    INPUT_CONNECTOR_NAME = "_cpy_in"
-    OUTPUT_CONNECTOR_NAME = "_cpy_out"
+    INPUT_CONNECTOR_NAME = INPUT_CONNECTOR_NAME
+    OUTPUT_CONNECTOR_NAME = OUTPUT_CONNECTOR_NAME
+    MEMORY_DESCRIPTOR_CONNECTOR_NAME = MEMORY_DESCRIPTOR_CONNECTOR_NAME
 
     sync = properties.Property(dtype=bool,
                                default=True,
                                desc='Emit __syncthreads() barriers around the SharedMemoryCollective '
-                               'copy (default True).')
+                                    'copy (default True).')
 
     def __init__(self, name, *args, sync=True, **kwargs):
         super().__init__(name, *args, inputs={INPUT_CONNECTOR_NAME}, outputs={OUTPUT_CONNECTOR_NAME}, **kwargs)

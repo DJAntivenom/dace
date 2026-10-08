@@ -253,7 +253,7 @@ def test_copy_rank_mismatch_padded_src_raises():
                    storage=dace.dtypes.StorageType.CPU_Heap,
                    strides=(5 * 8, 8, 1),
                    total_size=4 * 5 * 8),
-        _ArraySpec(shape=(120, ), storage=dace.dtypes.StorageType.CPU_Heap),
+        _ArraySpec(shape=(120,), storage=dace.dtypes.StorageType.CPU_Heap),
         name="copy_rank_mismatch_padded_raises",
     )
     sdfg.validate()
@@ -265,7 +265,7 @@ def test_copy_rank_mismatch_strided_src_subset():
     """Rank-mismatch from a non-contiguous C-layout src subset walks the collapsed strides."""
     sdfg, _ = _make_copy_sdfg(
         _ArraySpec(shape=(8, 10), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:8, 2:6"),
-        _ArraySpec(shape=(32, ), storage=dace.dtypes.StorageType.CPU_Heap),
+        _ArraySpec(shape=(32,), storage=dace.dtypes.StorageType.CPU_Heap),
         name="copy_rank_mismatch_strided_subset",
     )
     sdfg.validate()
@@ -280,7 +280,7 @@ def test_copy_rank_mismatch_strided_src_subset():
 def test_copy_rank_mismatch_strided_dst_subset():
     """Symmetric to the src-side variant: non-contiguous C-layout subset on the dst side."""
     sdfg, _ = _make_copy_sdfg(
-        _ArraySpec(shape=(32, ), storage=dace.dtypes.StorageType.CPU_Heap),
+        _ArraySpec(shape=(32,), storage=dace.dtypes.StorageType.CPU_Heap),
         _ArraySpec(shape=(8, 10), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:8, 2:6"),
         name="copy_rank_mismatch_strided_dst_subset",
     )
@@ -297,8 +297,8 @@ def test_copy_same_subset_different_array_shapes():
     """A ``0:N`` slice copies between arrays of different total shape as long as the per-dim subset sizes match."""
     N = 10
     sdfg, _ = _make_copy_sdfg(
-        _ArraySpec(shape=(200, ), storage=dace.dtypes.StorageType.CPU_Heap, subset=f"0:{N}", name="A"),
-        _ArraySpec(shape=(500, ), storage=dace.dtypes.StorageType.CPU_Heap, subset=f"0:{N}", name="B"),
+        _ArraySpec(shape=(200,), storage=dace.dtypes.StorageType.CPU_Heap, subset=f"0:{N}", name="A"),
+        _ArraySpec(shape=(500,), storage=dace.dtypes.StorageType.CPU_Heap, subset=f"0:{N}", name="B"),
         name="copy_same_subset_diff_shape",
     )
     sdfg.expand_library_nodes()
@@ -314,7 +314,7 @@ def test_copy_1d_slice_from_2d_source():
     """A row-slice ``[i, 0:N]`` of a 2D array copies into a 1D array (singleton dims collapse to same rank)."""
     sdfg, _ = _make_copy_sdfg(
         _ArraySpec(shape=(5, 10), storage=dace.dtypes.StorageType.CPU_Heap, subset="2, 0:10", name="A"),
-        _ArraySpec(shape=(10, ), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:10", name="B"),
+        _ArraySpec(shape=(10,), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:10", name="B"),
         name="copy_1d_slice_from_2d",
     )
     sdfg.expand_library_nodes()
@@ -342,7 +342,7 @@ def test_copy_4d_to_1d_flatten_c_packed():
     """4D -> 1D flatten via MappedTasklet rank-mismatch (extends beyond the 3D->1D coverage)."""
     sdfg, libnode = _make_copy_sdfg(
         _ArraySpec(shape=(2, 3, 4, 5), storage=dace.dtypes.StorageType.CPU_Heap),
-        _ArraySpec(shape=(120, ), storage=dace.dtypes.StorageType.CPU_Heap),
+        _ArraySpec(shape=(120,), storage=dace.dtypes.StorageType.CPU_Heap),
         name="copy_4d_to_1d_c",
     )
     sdfg.validate()
@@ -358,7 +358,7 @@ def test_copy_4d_to_1d_flatten_c_packed():
 def test_copy_1d_to_4d_inflate_c_packed():
     """1D -> 4D inflate (higher-rank destination); inverse direction of the flatten path."""
     sdfg, libnode = _make_copy_sdfg(
-        _ArraySpec(shape=(24, ), storage=dace.dtypes.StorageType.CPU_Heap),
+        _ArraySpec(shape=(24,), storage=dace.dtypes.StorageType.CPU_Heap),
         _ArraySpec(shape=(2, 3, 4), storage=dace.dtypes.StorageType.CPU_Heap),
         name="copy_1d_to_3d_c",
     )
@@ -409,8 +409,8 @@ def test_copy_4d_to_2d_collapse_pair_dims_fortran():
 def test_copy_strided_step_2_cpu_same_rank():
     """Same-rank 1D copy with subset step=2 (every other element)."""
     sdfg, libnode = _make_copy_sdfg(
-        _ArraySpec(shape=(10, ), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:10:2"),
-        _ArraySpec(shape=(5, ), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:5"),
+        _ArraySpec(shape=(10,), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:10:2"),
+        _ArraySpec(shape=(5,), storage=dace.dtypes.StorageType.CPU_Heap, subset="0:5"),
         name="copy_step2_cpu",
     )
     sdfg.validate()
@@ -823,8 +823,8 @@ def test_copy_padded_unit_dim_cross_storage_selection():
     With only one row the pitch gap is never crossed, so the row is one contiguous run on both sides and
     ``MemcpyCUDA1D`` is exact (a pitched ``cudaMemcpy2D`` would be equivalent but needlessly 2D)."""
     for src_storage, dst_storage in (
-        (dace.dtypes.StorageType.CPU_Heap, dace.dtypes.StorageType.GPU_Global),
-        (dace.dtypes.StorageType.GPU_Global, dace.dtypes.StorageType.CPU_Heap),
+            (dace.dtypes.StorageType.CPU_Heap, dace.dtypes.StorageType.GPU_Global),
+            (dace.dtypes.StorageType.GPU_Global, dace.dtypes.StorageType.CPU_Heap),
     ):
         sdfg, node = _make_copy_sdfg(
             _padded_unit_spec(src_storage, "A"),
@@ -849,8 +849,8 @@ def test_copy_padded_multirow_cross_storage_uses_pitched():
     this test would catch it before the numerical damage.
     """
     for src_storage, dst_storage in (
-        (dace.dtypes.StorageType.CPU_Heap, dace.dtypes.StorageType.GPU_Global),
-        (dace.dtypes.StorageType.GPU_Global, dace.dtypes.StorageType.CPU_Heap),
+            (dace.dtypes.StorageType.CPU_Heap, dace.dtypes.StorageType.GPU_Global),
+            (dace.dtypes.StorageType.GPU_Global, dace.dtypes.StorageType.CPU_Heap),
     ):
         sdfg, node = _make_copy_sdfg(
             _padded_multirow_spec(src_storage, "A"),
@@ -1684,7 +1684,7 @@ def test_copy_tiled_subset_rank_mismatch_numbers():
     """The 1-D walker over a tiled C-layout source visits tile-innermost, matching subset order."""
     sdfg, _ = _make_copy_sdfg(
         _ArraySpec(shape=(2, 16, 4), storage=dace.dtypes.StorageType.CPU_Heap, subset="1, 0:10:8:2, 3", name="A"),
-        _ArraySpec(shape=(4, ), storage=dace.dtypes.StorageType.CPU_Heap, name="B"),
+        _ArraySpec(shape=(4,), storage=dace.dtypes.StorageType.CPU_Heap, name="B"),
         name="copy_tiled_subset",
     )
     sdfg.validate()
@@ -1730,8 +1730,8 @@ def test_copy_zero_element_expands_to_an_empty_map():
 def test_copy_between_two_cpu_storages_is_a_memcpy():
     """CPU_ThreadLocal and CPU_Heap differ only in the allocator; a plain memcpy between them is correct."""
     sdfg, libnode = _make_copy_sdfg(
-        _ArraySpec(shape=(16, ), storage=dace.dtypes.StorageType.CPU_ThreadLocal, transient=True, name="A"),
-        _ArraySpec(shape=(16, ), storage=dace.dtypes.StorageType.CPU_Heap, transient=True, name="B"),
+        _ArraySpec(shape=(16,), storage=dace.dtypes.StorageType.CPU_ThreadLocal, transient=True, name="A"),
+        _ArraySpec(shape=(16,), storage=dace.dtypes.StorageType.CPU_Heap, transient=True, name="B"),
         implementation="MemcpyCPU",
         name="copy_threadlocal_to_heap",
     )
@@ -1742,7 +1742,7 @@ def test_copy_between_two_cpu_storages_is_a_memcpy():
 def test_copy_struct_member_name_is_a_valid_identifier():
     """A struct member name carries a '.', which cannot appear in the emitted C++ SDFG/function name."""
     sdfg = dace.SDFG('copy_struct_member_name')
-    sdfg.add_datadesc('S', dace.data.Structure({'f': dace.data.Array(dace.float64, (16, ))}, name='S'))
+    sdfg.add_datadesc('S', dace.data.Structure({'f': dace.data.Array(dace.float64, (16,))}, name='S'))
     sdfg.add_array('B', [16], dace.float64)
     state = sdfg.add_state('main')
     libnode = CopyLibraryNode(name='copy_S.f_to_B')
@@ -1923,7 +1923,7 @@ def test_symbolic_extent_expansions_keep_their_ranges_symbolic():
     ``stockham_fft`` expansion failure.
     """
     R, K = dace.symbol('R'), dace.symbol('K')
-    extent = R**K
+    extent = R ** K
 
     sdfg = dace.SDFG('symbolic_extent_copy')
     sdfg.add_array('src', [extent], dace.float64)
@@ -2021,6 +2021,62 @@ def test_a_host_level_cross_boundary_copy_never_falls_back_to_a_mapped_tasklet()
         _ArraySpec(shape=(4, 8), storage=dace.dtypes.StorageType.GPU_Global, transient=True),
     )
     assert select_copy_implementation(libnode, sdfg.start_state) == "MemcpyCUDA1D"
+
+
+@pytest.mark.parametrize("src_storage", _SINGLE_ELT_STORAGES)
+@pytest.mark.parametrize("dst_storage", _SINGLE_ELT_STORAGES)
+def test_memory_engine_copy_rejects_no_shared(src_storage, dst_storage):
+    """`MemoryEngineBulk` expansion accepts only cases `GPU_Global`->`GPU_Shared` or `GPU_Shared`->`GPU_Global`."""
+    sdfg, _ = _make_copy_sdfg(
+        _ArraySpec(shape=[32], storage=src_storage, transient=src_storage == dace.StorageType.GPU_Shared, name="In"),
+        _ArraySpec(shape=[32], storage=dst_storage, transient=dst_storage == dace.StorageType.GPU_Shared, name="Out"),
+        implementation="MemoryEngineBulk",
+        name="tma_bad",
+        libnode_name="tma_bad_node",
+    )
+    is_correct_memories = (src_storage, dst_storage) in [
+        (dace.StorageType.GPU_Global, dace.StorageType.GPU_Shared),
+        (dace.StorageType.GPU_Shared, dace.StorageType.GPU_Global)]
+    if is_correct_memories:
+        sdfg.expand_library_nodes()
+    else:
+        with pytest.raises(Exception, match="GPU_Shared / GPU_Global storages"):
+            sdfg.expand_library_nodes()
+
+
+def test_memory_engine_copy_rejects_inside_tblock_map():
+    """A collective ``SharedMemoryCollective`` copy nested in a GPU_ThreadBlock map raises at expansion."""
+    sdfg = dace.SDFG("tma_in_tblock")
+    sdfg.add_array("A", [256], dace.float64, dace.StorageType.GPU_Global)
+    sdfg.add_array("B", [256], dace.float64, dace.StorageType.GPU_Global)
+    sdfg.add_array("shmem", [32], dace.float64, dace.StorageType.GPU_Shared, transient=True)
+
+    state = sdfg.add_state("main")
+    a = state.add_access("A")
+    shm = state.add_access("shmem")
+
+    ome, omx = state.add_map("device_map", {"bi": "0:256:32"}, schedule=dace.dtypes.ScheduleType.GPU_Device)
+    # ThreadBlock map is an invalid parent for a collective copy.
+    ime, imx = state.add_map("tblock_map", {"ti": "0:32"}, schedule=dace.dtypes.ScheduleType.GPU_ThreadBlock)
+
+    libnode = CopyLibraryNode(name="shmcpy_bad")
+    libnode.implementation = "SharedMemoryCollective"
+
+    state.add_memlet_path(a,
+                          ome,
+                          ime,
+                          libnode,
+                          dst_conn=CopyLibraryNode.INPUT_CONNECTOR_NAME,
+                          memlet=dace.Memlet("A[bi:bi+32]"))
+    state.add_memlet_path(libnode,
+                          imx,
+                          omx,
+                          shm,
+                          src_conn=CopyLibraryNode.OUTPUT_CONNECTOR_NAME,
+                          memlet=dace.Memlet("shmem[0:32]"))
+
+    with pytest.raises(Exception, match="GPU_ThreadBlock"):
+        sdfg.expand_library_nodes()
 
 
 if __name__ == "__main__":
