@@ -1,4 +1,6 @@
+import cupy as cp
 import dace
+from dace.sdfg.infer_types import set_default_schedule_and_storage_types
 from dace.transformation.dataflow import InLocalStorage
 from dace.transformation.passes.insert_explicit_copies import InsertExplicitCopies
 
@@ -7,11 +9,11 @@ M = dace.symbol('M')
 
 
 @dace.program
-def transpose(A: dace.float64[N, M] @ dace.dtypes.StorageType.GPU_Global,
-              B: dace.float64[M, N] @ dace.dtypes.StorageType.GPU_Global):
-    for i, j in dace.map[0:N:16, 0:M:16] @ dace.dtypes.ScheduleType.GPU_Device:
+def transpose(A: dace.float64[M, N] @ dace.dtypes.StorageType.GPU_Global,
+              B: dace.float64[N, M] @ dace.dtypes.StorageType.GPU_Global):
+    for i, j in dace.map[0:M:16, 0:N:16] @ dace.dtypes.ScheduleType.GPU_Device:
         for bi, bj in dace.map[i:i + 16, j:j + 16] @ dace.dtypes.ScheduleType.GPU_ThreadBlock:
-            B[bi, bj] = A[bj, bi]
+            B[bj, bi] = A[bi, bj]
 
 
 sdfg = transpose.to_sdfg()
@@ -27,4 +29,17 @@ filename = "transpose.sdfgz"
 sdfg.save(filename, compress=True)
 print("Saved copy-based sdfg to " + filename)
 
+filename = "transpose_expanded.sdfgz"
+set_default_schedule_and_storage_types(sdfg)
+sdfg.expand_library_nodes()
+sdfg.save(filename, compress=True)
+print("Saved expanded sdfg to " + filename)
+
 csdfg = sdfg.compile()
+
+A = cp.arange(60, dtype=dace.float64.as_numpy_dtype()).reshape((10, 6))
+B = cp.empty((6, 10), dtype=A.dtype)
+csdfg(A=A, B=B, M=A.shape[0], N=A.shape[1])
+
+print(cp.asnumpy(A))
+print(cp.asnumpy(B))
