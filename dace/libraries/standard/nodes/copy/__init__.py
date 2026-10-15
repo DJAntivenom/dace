@@ -4,5 +4,5 @@ from dace.libraries.standard.nodes.copy.node import CopyLibraryNode
 from dace.libraries.standard.nodes.copy.select import select_copy_implementation
 from dace.libraries.standard.nodes.copy.expansions import (ExpandAuto, ExpandMappedTasklet, ExpandMemcpyCPU,
                                                            ExpandMemcpyCUDA1D, ExpandMemcpyCUDA2D,
-                                                           ExpandMemcpyCUDANDStrided, ExpandSharedMemoryCollective,
-                                                           ExpandTasklet)
+                                                           ExpandMemcpyCUDANDStrided, ExpandMemoryEngineBulk,
+                                                           ExpandSharedMemoryCollective, ExpandTasklet)

@@ -21,6 +21,11 @@ if TYPE_CHECKING:
 INPUT_CONNECTOR_NAME = "_cpy_in"
 OUTPUT_CONNECTOR_NAME = "_cpy_out"
 
+MEMORY_ENGINE_DESC_INPUT_NAME = "_tma_desc_in"
+MEMORY_ENGINE_DESC_OUTPUT_NAME = "_tma_desc_out"
+
+CUtensorMap = dace.dtypes.opaque("CUtensorMap")
+
 
 @dataclass
 class CopyExpansion:
@@ -90,7 +95,7 @@ def _delinearized_index(b_i: symbolic.symbol, shape: List[symbolic.SymExpr], lay
 
 
 def cuda2d_pitch_params(
-    copy_shape: List[symbolic.SymExpr], src_strides: List[symbolic.SymExpr], dst_strides: List[symbolic.SymExpr]
+        copy_shape: List[symbolic.SymExpr], src_strides: List[symbolic.SymExpr], dst_strides: List[symbolic.SymExpr]
 ) -> Optional[Tuple[symbolic.SymExpr, symbolic.SymExpr, symbolic.SymExpr, symbolic.SymExpr]]:
     """Element-count ``cudaMemcpy2DAsync`` pitch params ``(dpitch, spitch, width, height)`` for a
     2D (or ``(N, 1)``-promoted) copy, or ``None`` if not a single ``cudaMemcpy2DAsync``. Single
@@ -183,8 +188,8 @@ def _make_mapped_tasklet_expansion(node: "CopyLibraryNode",
 
     is_register = lambda s: s == dtypes.StorageType.Register
     is_thread_local = (is_register(inp.storage) and is_register(out.storage)) or (
-        (is_register(inp.storage) and out.storage == dtypes.StorageType.GPU_Shared) or
-        (is_register(out.storage) and inp.storage == dtypes.StorageType.GPU_Shared))
+            (is_register(inp.storage) and out.storage == dtypes.StorageType.GPU_Shared) or
+            (is_register(out.storage) and inp.storage == dtypes.StorageType.GPU_Shared))
     in_kernel = is_devicelevel_gpu(parent_state.sdfg, parent_state, node)
     if is_thread_local or in_kernel:
         schedule = dtypes.ScheduleType.Sequential
@@ -397,3 +402,86 @@ def _build_shmem_collective_copy_code(node: "CopyLibraryNode", parent_state: dac
     sync_barrier = "__syncthreads();\n" if node.sync and (inp.storage == dtypes.StorageType.GPU_Shared
                                                           or out.storage == dtypes.StorageType.GPU_Shared) else ""
     return f"{sync_barrier}{copy_tmpl}::{shape_tmpl}::Copy({', '.join(all_args)});\n{sync_barrier}"
+
+
+def _build_memory_engine_bulk_copy_code(node: "CopyLibraryNode", parent_state: dace.SDFGState, inp: data.Data,
+                                        in_subset: dace.subsets.Range, out: data.Data,
+                                        out_subset: dace.subsets.Range) -> str:
+    """
+    #include <cuda.h>         // CUtensormap
+#include <cuda/barrier>
+
+using barrier = cuda::barrier<cuda::thread_scope_block>;
+namespace ptx = cuda::ptx;
+
+__device__ inline bool is_elected()
+{
+unsigned int tid = threadIdx.x;
+unsigned int warp_id = tid / 32;
+unsigned int uniform_warp_id = __shfl_sync(0xFFFFFFFF, warp_id, 0); // Broadcast from lane 0.
+return (uniform_warp_id == 0 && ptx::elect_sync(0xFFFFFFFF)); // Elect a leader thread among warp 0.
+}
+
+__global__ void kernel(const __grid_constant__ CUtensorMap tensor_map, int x, int y) {
+// The destination shared memory buffer of a bulk tensor operation should be
+// 128 byte aligned.
+__shared__ alignas(128) int smem_buffer[SMEM_HEIGHT][SMEM_WIDTH];
+
+// Initialize shared memory barrier with the number of threads participating in the barrier.
+#pragma nv_diag_suppress static_var_with_dynamic_init
+__shared__ barrier bar;
+
+if (threadIdx.x == 0) {
+// Initialize barrier. All `blockDim.x` threads in block participate.
+init(&bar, blockDim.x);
+}
+// Syncthreads so initialized barrier is visible to all threads.
+__syncthreads();
+
+barrier::arrival_token token;
+if (is_elected()) {
+// Initiate bulk tensor copy.
+int32_t tensor_coords[2] = { x, y };
+ptx::cp_async_bulk_tensor(
+  ptx::space_shared, ptx::space_global,
+  &smem_buffer, &tensor_map, tensor_coords,
+  cuda::device::barrier_native_handle(bar));
+// Arrive on the barrier and tell how many bytes are expected to come in.
+token = cuda::device::barrier_arrive_tx(bar, 1, sizeof(smem_buffer));
+} else {
+// Other threads just arrive.
+token = bar.arrive();
+}
+// Wait for the data to have arrived.
+bar.wait(std::move(token));
+
+// Symbolically modify a value in shared memory.
+smem_buffer[0][threadIdx.x] += threadIdx.x;
+
+// Wait for shared memory writes to be visible to TMA engine.
+ptx::fence_proxy_async(ptx::space_shared);
+__syncthreads();
+// After syncthreads, writes by all threads are visible to TMA engine.
+
+// Initiate TMA transfer to copy shared memory to global memory
+if (is_elected()) {
+int32_t tensor_coords[2] = { x, y };
+ptx::cp_async_bulk_tensor(
+  ptx::space_global, ptx::space_shared,
+  &tensor_map, tensor_coords, &smem_buffer);
+// Wait for TMA transfer to have finished reading shared memory.
+// Create a "bulk async-group" out of the previous bulk copy operation.
+ptx::cp_async_bulk_commit_group();
+// Wait for the group to have completed reading from shared memory.
+ptx::cp_async_bulk_wait_group_read(ptx::n32_t<0>());
+}
+
+// Destroy barrier. This invalidates the memory region of the barrier. If
+// further computations were to take place in the kernel, this allows the
+// memory location of the shared memory barrier to be reused.
+if (threadIdx.x == 0) {
+(&bar)->~barrier();
+}
+}
+    """
+    raise NotImplementedError("Implement TMA Code")

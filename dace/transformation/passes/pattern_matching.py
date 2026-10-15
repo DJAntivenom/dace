@@ -140,7 +140,7 @@ class PatternMatchAndApply(ppl.Pass):
         return applied_transformations
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 @properties.make_properties
 class PatternMatchAndApplyRepeated(PatternMatchAndApply):
     """
